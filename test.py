@@ -1,10 +1,11 @@
 import json
+import pprint
 import re
 import random
 import string
 
-from autobahn.asyncio.websocket import WebSocketClientProtocol
-from autobahn.asyncio.websocket import WebSocketClientFactory
+#from autobahn.asyncio.websocket import WebSocketClientProtocol
+from autobahn.asyncio.websocket import WebSocketClientProtocol, WebSocketClientFactory
 
 from pytradingview.event_emitter import EventEmitter
 
@@ -20,6 +21,23 @@ class Stock:
         self.data.update(data)
 
 
+#    def isReady(self):
+#        if self.data.keys() >= {'lp', 'ch', 'chv'
+
+
+    def __str__(self):
+        print(self.symbol)
+        print(f'    sess : {self.data["current_session"]}')
+        print(f'    lp   : {self.data["lp"]}')
+        print(f'    rtc  : {self.data["rtc"]}')
+        print(f'    ch   : {self.data["ch"]}')
+        print(f'    rch  : {self.data["rch"]}')
+        print(f'    chp  : {self.data["chp"]}')
+        print(f'    rchp : {self.data["rchp"]}')
+        print('----------------------------------------------')
+        return self.symbol + ': ' + str(self.data['lp'] if 'lp' in self.data else 'Loading...')
+
+
 class Client(WebSocketClientFactory, EventEmitter):
     def __init__(self, loop):
         tv_url = 'wss://data.tradingview.com/socket.io/websocket'
@@ -31,8 +49,9 @@ class Client(WebSocketClientFactory, EventEmitter):
         )
 
         self._loop = loop
-        handler = ClientHandler(self.emit)
-        self.protocol = lambda: handler
+        #handler = ClientHandler(self.emit)
+        #self.protocol = lambda: handler
+        self.protocol = lambda: ClientHandler(self.emit)
 
 
     def run(self):
@@ -60,7 +79,6 @@ class ClientHandler(WebSocketClientProtocol):
 
     def sendRaw(self, message):
         message = f'~m~{str(len(message))}~m~{message}'.encode('utf8')
-        print(f'>> {message}')
         self.sendMessage(message)
 
 
@@ -82,17 +100,54 @@ class ClientHandler(WebSocketClientProtocol):
         self.send('set_auth_token', ['unauthorized_user_token'])
         self.send('quote_create_session', [self.quote_session])
 
-        self.send('quote_add_symbols', [self.quote_session, 'XLMUSD', {'flags': ['force_permission']}])
+        symbols = [
+            'AAPL', 'ACST', 'AGC', 'AHT', 'AIKI', 'AMC', 'AMD', 'AMRS', 'AMZN',
+            'BOTY', 'BP', 'BRK.B',
+            'CBAT', 'CBT', 'CRSR', 'CRVS', 'CYTH',
+            'EXPR',
+            'FB',
+            'GME',
+            'HACK',
+            'JNJ',
+            'KXIN',
+            'LIT', 'LYFT',
+            'MOM',
+            'NAKD', 'NOK',
+            'OKTA', 'OUST',
+            'PLAY', 'PLTR',
+            'QCLN',
+            'RBLX',
+            'SAVA', 'SFT', 'SHAK', 'SHOP', 'SNDL', 'SNOW', 'SUBZ', 'SQ',
+            'TMBR', 'TSLA', 'TTM',
+            'VIG',
+            'YOLO',
+            'WISH', 'WMT',
+            'ZOM'
+        ]
+        symbols = ['GME']
+        for symbol in symbols:
+            self.send('quote_add_symbols', [self.quote_session, symbol, {'flags': ['force_permission']}])
+#        self.send('quote_add_symbols', [self.quote_session, 'BTCUSD', {'flags': ['force_permission']}])
+#        self.send('quote_add_symbols', [self.quote_session, 'AHT', {'flags': ['force_permission']}])
+#        self.send('quote_add_symbols', [self.quote_session, 'AMC', {'flags': ['force_permission']}])
+#        self.send('quote_add_symbols', [self.quote_session, 'BP', {'flags': ['force_permission']}])
+#        self.send('quote_add_symbols', [self.quote_session, 'CRSR', {'flags': ['force_permission']}])
 
 
     def onMessage(self, payload, isBinary):
         lines = re.split(r'~m~[0-9]+~m~', payload.decode('utf8'))
+
         for i in range(len(lines)):
             if lines[i]:
-                try:
-                    data = json.loads(lines[1])
+                # Respond to heartbeat
+                if re.match(r'^~h~[0-9]+$', lines[i]):
+                    self.sendRaw(lines[i])
+                    continue
 
-                    if 'm' in data:
+                try:
+                    data = json.loads(lines[i])
+
+                    if 'm' in data and data['m'] == 'qsd':
                         if data['p'][0] == self.quote_session and data['p'][1]['s'] == 'ok':
                             symbol = data['p'][1]['n']
                             newdata = data['p'][1]['v']
@@ -104,10 +159,9 @@ class ClientHandler(WebSocketClientProtocol):
 
                             self.emit('update', watchlist[symbol])
                 except Exception as e:
-                    print(e)
-                    if re.match(r'^~h~[0-9]+$', lines[i]):
-                        self.sendRaw(lines[i])
-                        continue
+                    print(f'!!! {e}')
+                    print(lines[i])
+                    continue
 
 
 if __name__ == '__main__':
@@ -118,8 +172,8 @@ if __name__ == '__main__':
 
     conn = Client(loop)
     conn.on('connected', lambda: print('Connected!'))
-    conn.on('update', lambda x: pprint.pprint(x.data))
+    conn.on('update', lambda x: print(x))
     conn.run()
-
+    print('Starting...')
     loop.run_forever()
     loop.close()

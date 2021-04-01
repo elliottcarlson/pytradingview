@@ -10,4 +10,4 @@ __license__ = 'MIT'
 __copyright__ = 'Copyrigt 2021 Elliott Carlson'
 __version__ = '0.0.1'
 
-from pytradingview.client import TradingViewClient
+from pytradingview.client import Client as TradingViewClient

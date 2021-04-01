@@ -1,9 +1,11 @@
 import urwid
 import asyncio
+import random
 import string
 from datetime import datetime
 
 from cli.autoscrolllistbox import AutoScrollListBox
+from cli.eventemitter import EventEmitter
 from cli.utils import reify
 
 palette = [
@@ -43,22 +45,11 @@ def launch(app, loop):
     ).run()
 
 
-class Interface(urwid.WidgetWrap, metaclass=urwid.MetaSignals):
+class Interface(urwid.WidgetWrap, EventEmitter, metaclass=urwid.MetaSignals):
     signals = ['quit', 'keypress']
 
 
-    def __init__(self, client):
-        self.client = client
-
-        @client.on('test')
-        def tester(count):
-            self.send_message(f'Message #{count}')
-            return
-            self.messages.body.append(
-                MessageWidget(count)
-            )
-            self.messages.set_focus(len(self.messages.body)-1)
-
+    def __init__(self):
         super().__init__(self.widget)
 
 
@@ -100,16 +91,6 @@ class Interface(urwid.WidgetWrap, metaclass=urwid.MetaSignals):
         return widget
 
 
-    @reify
-    def messages_box(self):
-        return urwid.LineBox(self.messages)
-
-
-    @reify
-    def messages(self):
-        return urwid.ListBox(urwid.SimpleFocusListWalker([]))
-
-
     def send_message(self, text):
         if not isinstance(text, urwid.Text):
             text = urwid.Text(text)
@@ -119,29 +100,11 @@ class Interface(urwid.WidgetWrap, metaclass=urwid.MetaSignals):
         pass
 
 
-    @reify
-    def message(self):
-        edit = MessageEdit()
-        urwid.connect_signal(edit, 'send', self.send_message)
-        return edit
-
-
-    @reify
-    def sidebar(self):
-        return urwid.ListBox(urwid.SimpleFocusListWalker([]))
-
-
-    def input(self, key):
-        return self.keypress(self.size, key)
-
-
     def keypress(self, size, key):
         urwid.emit_signal(self, 'keypress', size, key)
 
         if key in ('page up', 'page down'):
             self.body.keypress(size, key)
-#        elif key == 'window resize':
-#            self.size = self.ui.get_cols_rows()
         elif key in ('ctrl d', 'ctrl c'):
             raise urwid.ExitMainLoop()
         elif key == 'enter':
@@ -154,7 +117,12 @@ class Interface(urwid.WidgetWrap, metaclass=urwid.MetaSignals):
                 raise urwid.ExitMainLoop()
 
             if text.strip():
-                self.send_message(text)
+                self.emit('message', {
+                    'client_msg_id': ''.join(random.choice(string.ascii_letters) for i in range(20)),
+                    'user': 'test_user',
+                    'channel': '#test',
+                    'text': text
+                })
         else:
             self.widget.keypress(size, key)
 
