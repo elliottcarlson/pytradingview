@@ -1,3 +1,6 @@
+import txaio
+txaio.use_asyncio()
+
 import asyncio
 
 from autobahn.asyncio.websocket import WebSocketClientFactory

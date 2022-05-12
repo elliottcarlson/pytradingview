@@ -29,10 +29,7 @@ async def run() -> Interface:
     app = Interface()
     tradingview = TradingViewClient(loop)
 
-    #stocky = Stocky(app, redis)
     app.on('message', lambda x: app.send_message(str(tradingview.quote(x['text']))))
-
-    #stocky = Stocky()
 
     tradingview.on('connected', lambda: loadWatchlist(tradingview))
     tradingview.on('update', lambda x: app.send_message(str(x)))

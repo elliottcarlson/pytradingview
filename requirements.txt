@@ -1,0 +1,5 @@
+autobahn==22.4.2
+nest-asyncio==1.5.5
+pyparsing==3.0.9
+Twisted==22.4.0
+urwid==2.1.2

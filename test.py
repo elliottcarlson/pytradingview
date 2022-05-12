@@ -4,10 +4,13 @@ import re
 import random
 import string
 
+import txaio
+txaio.use_asyncio()
+
 #from autobahn.asyncio.websocket import WebSocketClientProtocol
 from autobahn.asyncio.websocket import WebSocketClientProtocol, WebSocketClientFactory
 
-from pytradingview.event_emitter import EventEmitter
+from pytradingview.eventemitter import EventEmitter
 
 watchlist = {}
 
